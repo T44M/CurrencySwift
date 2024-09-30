@@ -1,3 +1,5 @@
+const { API_KEY, BASE_URL } = config;
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "convertCurrency") {
     const { amount, from, to } = request;
