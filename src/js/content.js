@@ -1,4 +1,4 @@
-document.addEventListener("mouseup", function () {
+document.addEventListener('mouseup', function() {
   let selectedText = window.getSelection().toString().trim();
   if (selectedText) {
     chrome.runtime.sendMessage(
@@ -41,7 +41,7 @@ document.addEventListener("mouseup", function () {
       }
     });
 
-    function showPopup(original, converted, fromCurrency, toCurrency) {
+    function showPopup(original, result, fromCurrency, toCurrency) {
       const selection = window.getSelection();
       const range = selection.getRangeAt(0);
       const rect = range.getBoundingClientRect();
@@ -57,6 +57,30 @@ document.addEventListener("mouseup", function () {
       popupDiv.textContent = `${original} ${fromCurrency} = ${converted} ${toCurrency}`;
 
       document.body.appendChild(popupDiv);
+
+      if (result.success) {
+        popupDiv.textContent = `${original} ${fromCurrency} = ${result.result} ${toCurrency}`;
+      } else {
+        popupDiv.textContent = `変換エラー: ${result.error}`;
+        popupDiv.style.backgroundColor = '#FFCCCB'; // エラー時の背景色
+      }
+    
+      document.body.appendChild(popupDiv);
     }
-  }
-});
+    }
+    if (selectedText && !isNaN(selectedText)) {
+      chrome.runtime.sendMessage({
+        action: "convertCurrency",
+        amount: selectedText,
+        from: items.fromCurrency || 'USD',
+        to: items.toCurrency || 'EUR'
+      }, function(response) {
+        if (chrome.runtime.lastError) {
+          console.error("メッセージングエラー:", chrome.runtime.lastError);
+          showPopup(selectedText, { success: false, error: "内部エラーが発生しました" }, items.fromCurrency, items.toCurrency);
+        } else {
+          showPopup(selectedText, response, items.fromCurrency, items.toCurrency);
+        }
+      });
+    }
+  });
