@@ -3,9 +3,10 @@
   "name": "CurrencySwift",
   "version": "1.0",
   "description": "Quickly convert currencies by selecting text on any webpage.",
-  "permissions": ["activeTab"],
+  "permissions": ["activeTab", "https://v6.exchangerate-api.com/*", "storage"],
+  "options_page": "options.html",
   "background": {
-    "scripts": ["js/background.js"],
+    "scripts": ["config.js", "js/background.js"],
     "persistent": false
   },
   "content_scripts": [

@@ -1,11 +1,21 @@
-chrome.runtime.onInstalled.addListener(function () {
-  console.log("CurrencySwift extension installed");
-});
+// config.js から設定を読み込む
+const { API_KEY, BASE_URL } = config;
 
-chrome.runtime.onMessage.addListener(function (request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   if (request.action === "convertCurrency") {
-    // ここに通貨変換ロジックを追加します（後で実装）
-    sendResponse({ result: "Conversion logic not implemented yet" });
+    const { amount, from, to } = request;
+    fetch(`${BASE_URL}${API_KEY}/pair/${from}/${to}/${amount}`)
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.result === "success") {
+          sendResponse({ result: data.conversion_result });
+        } else {
+          sendResponse({ error: "Conversion failed" });
+        }
+      })
+      .catch((error) => {
+        sendResponse({ error: "API request failed" });
+      });
+    return true; // 非同期レスポンスのために必要
   }
-  return true;
 });
