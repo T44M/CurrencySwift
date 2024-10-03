@@ -1,14 +1,26 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>CurrencySwift</title>
-    <link rel="stylesheet" type="text/css" href="css/popup.css" />
-  </head>
-  <body>
-    <h1>CurrencySwift</h1>
-    <input type="text" id="amountInput" placeholder="Enter amount" />
-    <button id="convertButton">Convert</button>
-    <div id="result"></div>
-    <script src="js/popup.js"></script>
-  </body>
+<head>
+  <title>CurrencySwift</title>
+  <link rel="stylesheet" type="text/css" href="css/popup.css">
+</head>
+<body>
+  <h1>CurrencySwift</h1>
+  <select id="fromCurrency">
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
+    <option value="JPY">JPY</option>
+    <!-- 他の通貨オプションを追加 -->
+  </select>
+  <input type="text" id="amountInput" placeholder="Enter amount">
+  <select id="toCurrency">
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
+    <option value="JPY">JPY</option>
+    <!-- 他の通貨オプションを追加 -->
+  </select>
+  <button id="convertButton">Convert</button>
+  <div id="result"></div>
+  <script src="js/popup.js"></script>
+</body>
 </html>
