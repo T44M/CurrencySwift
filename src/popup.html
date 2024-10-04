@@ -6,21 +6,24 @@
 </head>
 <body>
   <h1>CurrencySwift</h1>
-  <select id="fromCurrency">
-    <option value="USD">USD</option>
-    <option value="EUR">EUR</option>
-    <option value="JPY">JPY</option>
-    <!-- 他の通貨オプションを追加 -->
-  </select>
-  <input type="text" id="amountInput" placeholder="Enter amount">
-  <select id="toCurrency">
-    <option value="USD">USD</option>
-    <option value="EUR">EUR</option>
-    <option value="JPY">JPY</option>
-    <!-- 他の通貨オプションを追加 -->
-  </select>
-  <button id="convertButton">Convert</button>
+  <div id="converter">
+    <select id="fromCurrency">
+      <option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="JPY">JPY</option>
+      <!-- 他の通貨オプションを追加 -->
+    </select>
+    <input type="text" id="amountInput" placeholder="Enter amount">
+    <select id="toCurrency">
+      <option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="JPY">JPY</option>
+      <!-- 他の通貨オプションを追加 -->
+    </select>
+    <button id="convertButton">Convert</button>
+  </div>
   <div id="result"></div>
+  <div id="history"></div>
   <script src="js/popup.js"></script>
 </body>
 </html>

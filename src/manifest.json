@@ -4,6 +4,12 @@
   "version": "1.0",
   "description": "Quickly convert currencies by selecting text on any webpage.",
   "permissions": ["activeTab", "storage"],
+  "web_accessible_resources": [
+    {
+      "resources": ["images/logo.png"],
+      "matches": ["<all_urls>"]
+    }
+  ],
   "host_permissions": ["https://v6.exchangerate-api.com/*"],
   "background": {
   "service_worker": "js/background.js",
@@ -27,11 +33,5 @@
       "matches": ["<all_urls>"],
       "js": ["js/content.js"]
     }
-  ],
-  "web_accessible_resources": [
-  {
-    "resources": ["config.js"],
-    "matches": ["<all_urls>"]
-  }
-]
+  ]
 }
