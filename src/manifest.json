@@ -12,9 +12,8 @@
   ],
   "host_permissions": ["https://v6.exchangerate-api.com/*"],
   "background": {
-  "service_worker": "js/background.js",
-  "type": "module"
-},
+    "service_worker": "js/background.js"
+  },
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -33,5 +32,6 @@
       "matches": ["<all_urls>"],
       "js": ["js/content.js"]
     }
-  ]
+  ],
+  "options_page": "options.html"
 }

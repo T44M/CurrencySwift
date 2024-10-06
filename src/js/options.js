@@ -20,24 +20,6 @@ function saveOptions() {
   });
 }
 
-function saveOptions() {
-  const fromCurrency = document.getElementById("fromCurrency").value;
-  const toCurrency = document.getElementById("toCurrency").value;
-  chrome.storage.sync.set(
-    {
-      fromCurrency: fromCurrency,
-      toCurrency: toCurrency,
-    },
-    function () {
-      const status = document.getElementById("status");
-      status.textContent = "Options saved.";
-      setTimeout(function () {
-        status.textContent = "";
-      }, 750);
-    }
-  );
-}
-
 function restoreOptions() {
   chrome.storage.sync.get(
     {

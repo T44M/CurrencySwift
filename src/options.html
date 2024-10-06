@@ -1,29 +1,39 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>CurrencySwift Options</title>
-  </head>
-  <body>
-    <h1>CurrencySwift Options</h1>
-    <label for="fromCurrency">Convert from:</label>
-    <select id="fromCurrency">
-      <option value="USD">USD</option>
-      <option value="EUR">EUR</option>
-      <option value="JPY">JPY</option>
-      <!-- 他の通貨を追加 -->
-    </select>
+<head>
+  <title>CurrencySwift Options</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+    }
+    label, select, button {
+      margin: 10px 0;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <h1>CurrencySwift Options</h1>
+  
+  <label for="fromCurrency">Convert from:</label>
+  <select id="fromCurrency">
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
+    <option value="JPY">JPY</option>
+  </select>
 
-    <label for="toCurrency">Convert to:</label>
-    <select id="toCurrency">
-      <option value="USD">USD</option>
-      <option value="EUR">EUR</option>
-      <option value="JPY">JPY</option>
-      <!-- 他の通貨を追加 -->
-    </select>
+  <label for="toCurrency">Convert to:</label>
+  <select id="toCurrency">
+    <option value="USD">USD</option>
+    <option value="EUR">EUR</option>
+    <option value="JPY">JPY</option>
+  </select>
 
-    <button id="save">Save</button>
-    <div id="status"></div>
+  <button id="save">Save</button>
 
-    <script src="js/options.js"></script>
-  </body>
+  <div id="status"></div>
+
+  <script src="js/options.js"></script>
+</body>
 </html>
