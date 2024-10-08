@@ -1,42 +1,7 @@
 let logoElement = null;
-let conversionPopup = null;
-
-function safeRemoveElement(element) {
-  if (element && element.parentNode) {
-    element.parentNode.removeChild(element);
-  }
-}
-
-function handleError(error) {
-  console.error('CurrencySwift Error:', error);
-  if (error.message.includes('Extension context invalidated')) {
-    console.log('Extension context invalidated. Reloading page...');
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  }
-}
-
-document.addEventListener('mouseup', function(event) {
-  if (!event || !event.target) return;  // イベントまたはターゲットが存在しない場合は処理を中断
-
-  console.log("Mouse up event triggered");
-  try {
-    console.log("Mouse up event triggered");
-    safeRemoveElement(logoElement);
-    safeRemoveElement(conversionPopup);
-
-    let selectedText = window.getSelection().toString().trim();
-    console.log("Selected text:", selectedText);
-
-    if (selectedText && !isNaN(selectedText)) {
-      console.log("Valid number selected, showing logo");
-      showLogo(selectedText);
-    }
-  } catch (error) {
-    handleError(error);
-  }
-});
+let conversionBar = null;
+let clickListenerAdded = false;
+let ignoreNextClick = false;
 
 function showLogo(selectedText) {
   try {
@@ -47,127 +12,178 @@ function showLogo(selectedText) {
 
     console.log("Logo position:", rect.left, rect.top);
 
+    if (logoElement) {
+      document.body.removeChild(logoElement);
+    }
+
     logoElement = document.createElement("div");
-    logoElement.style.position = "absolute";
+    logoElement.style.position = "fixed";
     logoElement.style.left = `${rect.left + window.scrollX}px`;
     logoElement.style.top = `${rect.top + window.scrollY - 30}px`;
     logoElement.style.width = "24px";
     logoElement.style.height = "24px";
-
-    const logoUrl = chrome.runtime.getURL("images/logo.png");
-    console.log("Logo URL:", logoUrl);  // デバッグ用
-    logoElement.style.backgroundImage = `url('${logoUrl}')`;
-
+    logoElement.style.borderRadius = "12px";
+    logoElement.style.backgroundImage = `url(${chrome.runtime.getURL("images/logo.png")})`;
     logoElement.style.backgroundSize = "cover";
     logoElement.style.cursor = "pointer";
     logoElement.style.zIndex = "10000";
+    logoElement.style.transition = "all 0.3s ease-in-out";
 
-    logoElement.addEventListener('click', function() {
-      convertAndShowPopup(selectedText);
+    logoElement.addEventListener('click', function(event) {
+      event.stopPropagation();
+      console.log("Logo clicked");
+      convertAndShowBar(selectedText);
     });
 
     document.body.appendChild(logoElement);
     console.log("Logo element appended to body");
+
+    // 直後のクリックイベントを無視するフラグを立てる
+    ignoreNextClick = true;
+    setTimeout(() => {
+      ignoreNextClick = false;
+    }, 100);
+
+    if (!clickListenerAdded) {
+      document.addEventListener('click', closeLogoAndBar);
+      clickListenerAdded = true;
+    }
   } catch (error) {
-    handleError(error);
+    console.error("Error in showLogo:", error);
   }
 }
 
-function convertAndShowPopup(amount) {
-  try {
-    console.log("convertAndShowPopup called with amount:", amount);
-    chrome.storage.sync.get(["fromCurrency", "toCurrency"], function(items) {
-      const fromCurrency = items.fromCurrency || "USD";
-      const toCurrency = items.toCurrency || "EUR";
-      console.log("Converting from", fromCurrency, "to", toCurrency);
+function convertAndShowBar(amount) {
+  console.log("convertAndShowBar called with amount:", amount);
+  chrome.storage.sync.get(["fromCurrency", "toCurrency"], function(items) {
+    const fromCurrency = items.fromCurrency || "USD";
+    const toCurrency = items.toCurrency || "EUR";
 
-      chrome.runtime.sendMessage({
-        action: "convertCurrency",
-        amount: amount,
-        from: fromCurrency,
-        to: toCurrency
-      }, function(response) {
-        if (chrome.runtime.lastError) {
-          console.error("Error in sendMessage:", chrome.runtime.lastError);
-          handleError(chrome.runtime.lastError);
-          return;
-        }
-        console.log("Conversion response:", response);
-        showConversionPopup(amount, response, fromCurrency, toCurrency);
-        saveToHistory(amount, response.result, fromCurrency, toCurrency);
-      });
+    chrome.runtime.sendMessage({
+      action: "convertCurrency",
+      amount: amount,
+      from: fromCurrency,
+      to: toCurrency
+    }, function(response) {
+      if (chrome.runtime.lastError) {
+        console.error("Error in sendMessage:", chrome.runtime.lastError);
+        return;
+      }
+      console.log("Conversion response:", response);
+      animateLogoToBar(amount, response.result, toCurrency);
     });
-  } catch (error) {
-    handleError(error);
-  }
+  });
 }
 
-function showConversionPopup(original, result, fromCurrency, toCurrency) {
-  try {
-    console.log("showConversionPopup called");
-    safeRemoveElement(conversionPopup);
+function animateLogoToBar(originalAmount, convertedAmount, toCurrency) {
+  console.log("animateLogoToBar called");
+  if (!logoElement) {
+    console.error("Logo element not found");
+    return;
+  }
 
-    conversionPopup = document.createElement("div");
-    conversionPopup.style.position = "absolute";
-    conversionPopup.style.left = `${logoElement.offsetLeft}px`;
-    conversionPopup.style.top = `${logoElement.offsetTop + 30}px`;
-    conversionPopup.style.backgroundColor = "white";
-    conversionPopup.style.border = "1px solid #ccc";
-    conversionPopup.style.borderRadius = "5px";
-    conversionPopup.style.padding = "10px";
-    conversionPopup.style.boxShadow = "0 2px 5px rgba(0,0,0,0.2)";
-    conversionPopup.style.zIndex = "10001";
+  const rect = logoElement.getBoundingClientRect();
+  const startLeft = rect.left;
+  const startTop = rect.top;
 
-    if (result.success) {
-      conversionPopup.textContent = `${original} ${fromCurrency} = ${result.result} ${toCurrency}`;
-    } else {
-      conversionPopup.textContent = `変換エラー: ${result.error}`;
-      conversionPopup.style.color = 'red';
+  conversionBar = document.createElement("div");
+  conversionBar.style.position = "fixed";
+  conversionBar.style.left = `${startLeft}px`;
+  conversionBar.style.top = `${startTop}px`;
+  conversionBar.style.width = "24px";
+  conversionBar.style.height = "24px";
+  conversionBar.style.backgroundColor = "#333";
+  conversionBar.style.color = "#fff";
+  conversionBar.style.borderRadius = "12px";
+  conversionBar.style.display = "flex";
+  conversionBar.style.alignItems = "center";
+  conversionBar.style.justifyContent = "center";
+  conversionBar.style.overflow = "hidden";
+  conversionBar.style.transition = "all 0.3s ease-in-out";
+  conversionBar.style.zIndex = "10001";
+  conversionBar.style.boxShadow = "0 2px 10px rgba(0,0,0,0.2)";
+  conversionBar.style.opacity = "0";
+
+  document.body.appendChild(conversionBar);
+
+  // アニメーション
+  setTimeout(() => {
+    conversionBar.style.width = "180px";
+    conversionBar.style.height = "36px";
+    conversionBar.style.borderRadius = "18px";
+    conversionBar.style.opacity = "1";
+    conversionBar.innerHTML = `
+      <div style="font-size: 14px; white-space: nowrap; padding: 0 10px;">
+        ${convertedAmount} ${toCurrency}
+      </div>
+    `;
+    console.log("Conversion bar expanded");
+  }, 50);
+
+  // 画面のどこかをクリックしたらバーを閉じる
+  document.addEventListener('click', closeConversionBar);
+}
+
+function closeLogoAndBar(event) {
+  if (ignoreNextClick) {
+    console.log("Ignoring click event");
+    return;
+  }
+
+  if ((logoElement && !logoElement.contains(event.target)) || 
+      (conversionBar && !conversionBar.contains(event.target))) {
+    console.log("Closing logo and bar");
+    if (conversionBar) {
+      conversionBar.style.width = "24px";
+      conversionBar.style.height = "24px";
+      conversionBar.style.borderRadius = "12px";
+      conversionBar.style.opacity = "0";
+      conversionBar.innerHTML = "";
+
+      setTimeout(() => {
+        if (conversionBar && conversionBar.parentNode) {
+          conversionBar.parentNode.removeChild(conversionBar);
+          conversionBar = null;
+        }
+      }, 300);
     }
 
-    document.body.appendChild(conversionPopup);
-    console.log("Conversion popup displayed");
-  } catch (error) {
-    handleError(error);
-  }
-}
-
-function saveToHistory(original, converted, fromCurrency, toCurrency) {
-  try {
-    console.log("Saving to history:", original, converted, fromCurrency, toCurrency);
-    chrome.storage.local.get({conversionHistory: []}, function(data) {
-      let history = data.conversionHistory;
-      history.unshift({
-        original: original,
-        converted: converted,
-        fromCurrency: fromCurrency,
-        toCurrency: toCurrency,
-        date: new Date().toISOString()
-      });
-      if (history.length > 10) {
-        history.pop();
-      }
-      chrome.storage.local.set({conversionHistory: history}, function() {
-        if (chrome.runtime.lastError) {
-          console.error("Error saving to history:", chrome.runtime.lastError);
-          handleError(chrome.runtime.lastError);
-        } else {
-          console.log("History saved successfully");
+    if (logoElement) {
+      logoElement.style.opacity = "0";
+      setTimeout(() => {
+        if (logoElement && logoElement.parentNode) {
+          logoElement.parentNode.removeChild(logoElement);
+          logoElement = null;
         }
-      });
-    });
+      }, 300);
+    }
+
+    if (clickListenerAdded) {
+      document.removeEventListener('click', closeLogoAndBar);
+      clickListenerAdded = false;
+    }
+  }
+}
+
+document.addEventListener('mouseup', function(event) {
+  if (!event || !event.target) return;
+
+  console.log("Mouse up event triggered");
+  try {
+    let selectedText = window.getSelection().toString().trim();
+    console.log("Selected text:", selectedText);
+
+    if (selectedText && !isNaN(selectedText)) {
+      console.log("Valid number selected, showing logo");
+      showLogo(selectedText);
+    } else if (logoElement) {
+      closeLogoAndBar(event);
+    }
   } catch (error) {
-    handleError(error);
+    console.error("Error in mouseup event:", error);
   }
-}
+});
 
-// 拡張機能の状態をチェックする関数
-function checkExtensionStatus() {
-  if (!chrome.runtime.id) {
-    console.log('Extension context invalidated. Reloading page...');
-    window.location.reload();
-  }
-}
-
-// 定期的に拡張機能の状態をチェック
-setInterval(checkExtensionStatus, 5000);
+// 初期化時にロゴ画像をプリロード
+const logoImg = new Image();
+logoImg.src = chrome.runtime.getURL("images/logo.png");
