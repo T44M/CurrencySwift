@@ -1,7 +1,44 @@
+// スタイルの定義（content.jsの先頭に追加）
+const styles = `
+  @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap');
+
+  .currency-swift-bar {
+    font-family: 'Roboto', sans-serif;
+    background: linear-gradient(135deg, rgba(44, 62, 80, 0.85), rgba(52, 73, 94, 0.85));
+    color: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .currency-swift-bar-content {
+    padding: 0 15px;
+    white-space: nowrap;
+    font-size: 16px;
+    font-weight: 500;
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+`;
+
 let logoElement = null;
 let conversionBar = null;
 let clickListenerAdded = false;
-let ignoreNextClick = false;
+
+function applyStyles() {
+  if (!document.getElementById('currency-swift-styles')) {
+    const styleElement = document.createElement('style');
+    styleElement.id = 'currency-swift-styles';
+    styleElement.textContent = styles;
+    document.head.appendChild(styleElement);
+  }
+}
 
 function showLogo(selectedText) {
   try {
@@ -53,11 +90,40 @@ function showLogo(selectedText) {
   }
 }
 
+// バーの作成と表示を行う関数
+function createAndShowBar(startLeft, startTop) {
+  applyStyles();
+
+  conversionBar = document.createElement("div");
+  conversionBar.className = 'currency-swift-bar';
+  conversionBar.style.position = "fixed";
+  conversionBar.style.left = `${startLeft}px`;
+  conversionBar.style.top = `${startTop}px`;
+  conversionBar.style.width = "40px";
+  conversionBar.style.height = "40px";
+  conversionBar.style.opacity = "0";
+
+  const content = document.createElement("div");
+  content.className = 'currency-swift-bar-content';
+  conversionBar.appendChild(content);
+
+  document.body.appendChild(conversionBar);
+
+  // 初期アニメーション
+  requestAnimationFrame(() => {
+    conversionBar.style.opacity = "1";
+  });
+}
+
 function convertAndShowBar(amount) {
   console.log("convertAndShowBar called with amount:", amount);
   chrome.storage.sync.get(["fromCurrency", "toCurrency"], function(items) {
     const fromCurrency = items.fromCurrency || "USD";
     const toCurrency = items.toCurrency || "EUR";
+
+    // バーの初期表示を即座に行う
+    const rect = logoElement.getBoundingClientRect();
+    animateLogoToBar(rect.left, rect.top);
 
     chrome.runtime.sendMessage({
       action: "convertCurrency",
@@ -67,101 +133,96 @@ function convertAndShowBar(amount) {
     }, function(response) {
       if (chrome.runtime.lastError) {
         console.error("Error in sendMessage:", chrome.runtime.lastError);
+        updateBarContent("Error: Conversion failed");
         return;
       }
       console.log("Conversion response:", response);
-      animateLogoToBar(amount, response.result, toCurrency);
+      updateBarContent(formatAmount(response.result, toCurrency));
     });
   });
 }
 
-function animateLogoToBar(originalAmount, convertedAmount, toCurrency) {
+// バーの内容を更新する関数
+function updateBarContent(text) {
+  if (conversionBar) {
+    const content = conversionBar.querySelector('.currency-swift-bar-content');
+    content.textContent = text;
+
+    // テキストの幅に基づいてバーの幅を調整
+    const tempSpan = document.createElement('span');
+    tempSpan.style.visibility = 'hidden';
+    tempSpan.style.position = 'absolute';
+    tempSpan.style.font = window.getComputedStyle(content).font;
+    tempSpan.textContent = text;
+    document.body.appendChild(tempSpan);
+    
+    const textWidth = tempSpan.offsetWidth;
+    document.body.removeChild(tempSpan);
+
+    const newWidth = Math.max(180, textWidth + 40); // 最小幅は180px
+    
+    requestAnimationFrame(() => {
+      conversionBar.style.width = `${newWidth}px`;
+    });
+  }
+}
+
+function formatAmount(amount, currency) {
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: currency,
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+  return formatter.format(amount);
+}
+
+function animateLogoToBar(startLeft, startTop) {
   console.log("animateLogoToBar called");
   if (!logoElement) {
     console.error("Logo element not found");
     return;
   }
 
-  const rect = logoElement.getBoundingClientRect();
-  const startLeft = rect.left;
-  const startTop = rect.top;
+  // ロゴを非表示にするアニメーション
+  logoElement.style.transition = "opacity 0.2s ease-in-out";
+  logoElement.style.opacity = "0";
 
-  conversionBar = document.createElement("div");
-  conversionBar.style.position = "fixed";
-  conversionBar.style.left = `${startLeft}px`;
-  conversionBar.style.top = `${startTop}px`;
-  conversionBar.style.width = "24px";
-  conversionBar.style.height = "24px";
-  conversionBar.style.backgroundColor = "#333";
-  conversionBar.style.color = "#fff";
-  conversionBar.style.borderRadius = "12px";
-  conversionBar.style.display = "flex";
-  conversionBar.style.alignItems = "center";
-  conversionBar.style.justifyContent = "center";
-  conversionBar.style.overflow = "hidden";
-  conversionBar.style.transition = "all 0.3s ease-in-out";
-  conversionBar.style.zIndex = "10001";
-  conversionBar.style.boxShadow = "0 2px 10px rgba(0,0,0,0.2)";
-  conversionBar.style.opacity = "0";
+  createAndShowBar(startLeft, startTop);
+  updateBarContent("Converting...");
 
-  document.body.appendChild(conversionBar);
-
-  // アニメーション
+  // ロゴ要素を完全に削除
   setTimeout(() => {
-    conversionBar.style.width = "180px";
-    conversionBar.style.height = "36px";
-    conversionBar.style.borderRadius = "18px";
-    conversionBar.style.opacity = "1";
-    conversionBar.innerHTML = `
-      <div style="font-size: 14px; white-space: nowrap; padding: 0 10px;">
-        ${convertedAmount} ${toCurrency}
-      </div>
-    `;
-    console.log("Conversion bar expanded");
-  }, 50);
+    if (logoElement && logoElement.parentNode) {
+      logoElement.parentNode.removeChild(logoElement);
+      logoElement = null;
+    }
+  }, 200);
 
-  // 画面のどこかをクリックしたらバーを閉じる
-  document.addEventListener('click', closeConversionBar);
+  // バーが表示された後にクリックリスナーを追加
+  if (!clickListenerAdded) {
+    document.addEventListener('click', closeLogoAndBar);
+    clickListenerAdded = true;
+  }
 }
 
 function closeLogoAndBar(event) {
-  if (ignoreNextClick) {
-    console.log("Ignoring click event");
-    return;
-  }
+  console.log("closeLogoAndBar called");
+  if (conversionBar && !conversionBar.contains(event.target)) {
+    console.log("Closing bar");
+    conversionBar.style.width = "40px";
+    conversionBar.style.opacity = "0";
 
-  if ((logoElement && !logoElement.contains(event.target)) || 
-      (conversionBar && !conversionBar.contains(event.target))) {
-    console.log("Closing logo and bar");
-    if (conversionBar) {
-      conversionBar.style.width = "24px";
-      conversionBar.style.height = "24px";
-      conversionBar.style.borderRadius = "12px";
-      conversionBar.style.opacity = "0";
-      conversionBar.innerHTML = "";
-
-      setTimeout(() => {
-        if (conversionBar && conversionBar.parentNode) {
-          conversionBar.parentNode.removeChild(conversionBar);
-          conversionBar = null;
-        }
-      }, 300);
-    }
-
-    if (logoElement) {
-      logoElement.style.opacity = "0";
-      setTimeout(() => {
-        if (logoElement && logoElement.parentNode) {
-          logoElement.parentNode.removeChild(logoElement);
-          logoElement = null;
-        }
-      }, 300);
-    }
-
-    if (clickListenerAdded) {
-      document.removeEventListener('click', closeLogoAndBar);
-      clickListenerAdded = false;
-    }
+    setTimeout(() => {
+      if (conversionBar && conversionBar.parentNode) {
+        conversionBar.parentNode.removeChild(conversionBar);
+        conversionBar = null;
+      }
+      if (clickListenerAdded) {
+        document.removeEventListener('click', closeLogoAndBar);
+        clickListenerAdded = false;
+      }
+    }, 300);
   }
 }
 
@@ -176,8 +237,6 @@ document.addEventListener('mouseup', function(event) {
     if (selectedText && !isNaN(selectedText)) {
       console.log("Valid number selected, showing logo");
       showLogo(selectedText);
-    } else if (logoElement) {
-      closeLogoAndBar(event);
     }
   } catch (error) {
     console.error("Error in mouseup event:", error);
